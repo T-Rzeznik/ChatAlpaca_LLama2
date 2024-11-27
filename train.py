@@ -7,7 +7,7 @@ import os
 from huggingface_hub import whoami
 
 
-# Remove the API key check and just use CLI login
+
 try:
     whoami()
     print("Successfully verified Hugging Face CLI login")
@@ -24,28 +24,26 @@ bnb_config = BitsAndBytesConfig(
 )
 
 
-# Load ChatAlpaca dataset, assuming it's formatted as JSON or similar
+# Load ChatAlpaca dataset
 dataset = load_dataset('json', data_files='data/chatalpaca-10k.json')
 
-# Split the dataset into train and validation sets
-dataset = dataset["train"].train_test_split(test_size=0.1)  # 90% train, 10% validation
-# The dataset is now a DatasetDict with 'train' and 'test' splits
 
-# Instead of renaming a column, we should work with the dictionary structure
+dataset = dataset["train"].train_test_split(test_size=0.1)  # 90% train, 10% validation
+
+# work with the dictionary structure
 train_test_dict = {
     'train': dataset['train'],
-    'validation': dataset['test']  # Rename the split by creating a new dictionary
-}
+    'validation': dataset['test']  # Rename the split
 dataset = DatasetDict(train_test_dict)
 
 dataset['train'] = dataset['train'].select(range(500))
 dataset['validation'] = dataset['validation'].select(range(50))  # Also limit validation set
 
-# Tokenize data for Llama3
-tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf")
 
-# Set padding token to be the same as EOS token
-tokenizer.pad_token = tokenizer.eos_token
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf") # Tokenize data for Llama3
+
+
+tokenizer.pad_token = tokenizer.eos_token # Set padding token to be the same as EOS token
 
 def tokenize_function(examples):
     # Process conversations into a format suitable for training
@@ -58,12 +56,12 @@ def tokenize_function(examples):
         human_msgs = [turn["value"] for turn in conversation if turn["from"] == "human"]
         gpt_msgs = [turn["value"] for turn in conversation if turn["from"] == "gpt"]
         
-        # Take only the first pair from each conversation
-        if human_msgs and gpt_msgs:  # Make sure we have at least one pair
+        # take only the first pair from each conversation
+        if human_msgs and gpt_msgs:  # take care of edge case
             full_text = f"Human: {human_msgs[0]}\nAssistant: {gpt_msgs[0]}"
             
-            # Tokenize single example
-            tokenized = tokenizer(
+            
+            tokenized = tokenizer( # tokenize single example
                 full_text,
                 padding="max_length",
                 truncation=True,
@@ -83,7 +81,7 @@ def tokenize_function(examples):
 
 tokenized_datasets = dataset.map(tokenize_function, batched=True)
 
-# Configure quantization
+# quantization
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_compute_dtype=torch.float16,
@@ -91,7 +89,7 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_quant_type="nf4"
 )
 
-# Load the base Llama 2-7b model
+# Load the base model 
 model = AutoModelForCausalLM.from_pretrained(
     "meta-llama/Llama-2-7b-chat-hf",
     quantization_config=bnb_config,
@@ -101,7 +99,7 @@ model = AutoModelForCausalLM.from_pretrained(
     max_memory={0: "8GB"}
 )
 
-# Configure LoRA
+# LoRA config
 lora_config = LoraConfig(
     task_type=TaskType.CAUSAL_LM, 
     inference_mode=False,
@@ -109,7 +107,7 @@ lora_config = LoraConfig(
     lora_alpha=32,
     lora_dropout=0.1
 )
-model = get_peft_model(model, lora_config)
+model = get_peft_model(model, lora_config) #redfine the model with out new config with peft 
 
 
 
