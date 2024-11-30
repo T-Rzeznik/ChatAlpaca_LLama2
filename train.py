@@ -16,13 +16,6 @@ except Exception as e:
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4"
-)
-
 
 # Load ChatAlpaca dataset
 dataset = load_dataset('json', data_files='data/chatalpaca-10k.json')
